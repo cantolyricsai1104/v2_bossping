@@ -26,7 +26,7 @@ dotenv.config();
 const app = express();
 app.use(cors());
 
-const handler = copilotRuntimeNodeExpressEndpoint({
+app.use(copilotRuntimeNodeExpressEndpoint({
   endpoint: '/api/copilotkit',
   runtime: new CopilotRuntime(),
   serviceAdapter: new OpenAIAdapter({ 
@@ -36,16 +36,7 @@ const handler = copilotRuntimeNodeExpressEndpoint({
     }),
     model: "deepseek-chat"
   }),
-});
-
-app.all('/api/copilotkit', (req, res, next) => {
-  return handler(req, res, next);
-});
-
-// also handle trailing slash just in case
-app.all('/api/copilotkit/', (req, res, next) => {
-  return handler(req, res, next);
-});
+}));
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {

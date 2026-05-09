@@ -32,7 +32,8 @@
     "no_skills": "No skills extracted yet...",
     "star_stories": "STAR Stories Library",
     "no_stories": "No STAR stories extracted yet...",
-    "error": "Sorry, an error occurred and we couldn't connect to the AI."
+    "error": "Sorry, an error occurred and we couldn't connect to the AI.",
+    "new_chat": "New Chat"
   },
   "auth": {
     "login": "Login",

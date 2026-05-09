@@ -1,21 +1,24 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Mic, Sparkles, Loader2 } from 'lucide-react';
+import { Send, Mic, Sparkles, Loader2, PlusCircle } from 'lucide-react';
 import { callDeepSeekAPI } from '../lib/deepseek';
 import { useCareerStore } from '../store/useCareerStore';
+import { useChatStore, Message } from '../store/useChatStore';
 import { useTranslation } from 'react-i18next';
-
-interface Message {
-  role: 'user' | 'assistant';
-  content: string;
-}
+import { DynamicComponentRenderer } from '../components/generative-ui/DynamicComponentRenderer';
 
 export default function ExperienceExtractor() {
   const { t, i18n } = useTranslation();
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([
-    { role: 'assistant', content: t('extractor.welcome') }
-  ]);
+  
+  const { messages, setMessages, clearChat } = useChatStore();
+
+  useEffect(() => {
+    if (messages.length === 0 || (messages.length === 1 && messages[0].role === 'assistant')) {
+      setMessages([{ role: 'assistant', content: t('extractor.welcome') }]);
+    }
+  }, [i18n.language, t, messages.length, setMessages]);
+  
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
   const { skills, starStories, addSkills, addStarStories } = useCareerStore();
@@ -28,27 +31,68 @@ export default function ExperienceExtractor() {
     scrollToBottom();
   }, [messages]);
 
-  const handleSend = async () => {
-    if (!input.trim() || isLoading) return;
+  const handleSend = async (customMessage?: string) => {
+    const textToSend = customMessage || input.trim();
+    if (!textToSend || isLoading) return;
     
-    const userMessage = { role: 'user' as const, content: input.trim() };
+    const userMessage = { role: 'user' as const, content: textToSend };
     const newMessages = [...messages, userMessage];
     setMessages(newMessages);
-    setInput('');
+    if (!customMessage) setInput('');
     setIsLoading(true);
     
     try {
       const languageInstruction = i18n.language === 'en' ? 'Please reply in English' : '使用繁體中文';
       const apiMessages = [
-        { role: 'system' as const, content: `你是一個專業的職涯顧問。請將使用者的白話文經歷，轉譯成「可以寫在履歷上的專業技能 (Professional Skills for CV)」與「STAR 原則故事」。\n請不要使用任何 Markdown 標記 (如 **, # 等)。請以 JSON 格式回傳，必須包含以下三個欄位：\n1. "reply": 給使用者的純文字回應\n2. "skills": 履歷專業技能陣列 (字串陣列，例如「社群媒體經營與成長策略 (Social Media Growth & Organic Acquisition)」)\n3. "starStories": STAR 故事陣列 (每個元素包含 "title" 和 "content" 兩個字串欄位，內容需明確包含情境、任務、行動與結果)。\n${languageInstruction}，格式清晰。` },
-        ...newMessages
+        { role: 'system' as const, content: `你是一個支援 Generative UI 的專業職涯顧問與人資專家（熟悉香港市場）。
+請根據使用者提供的白話文經歷，進行分析並轉譯。
+
+請以 JSON 格式回傳，必須包含以下欄位：
+1. "reply": 給使用者的純文字回應
+2. "skills": 專業技能字串陣列 (可選)
+3. "starStories": STAR 故事陣列 (可選)
+4. "ui": 如果使用者提到具體的工作經歷，請生成一個 UI 讓他們填寫。或者，如果使用者要求進行職涯分析、薪資預估，或者你已經收集到足夠的經歷，請直接返回 CareerDashboard 分析結果。
+   支援的 ui 格式：
+   - 經驗表單：
+     {
+       "type": "ExperienceForm",
+       "props": { "company": "公司名稱", "role": "職位", "duration": "期間", "description": "STAR原則描述" }
+     }
+   - 職涯導航儀表板 (薪資需以港幣 HKD 計算)：
+     {
+       "type": "CareerDashboard",
+       "props": {
+         "analysis": {
+           "marketValue": { "min": 預估月薪下限數字, "max": 上限數字, "seniority": "Junior/Mid-level/Senior", "suggestion": "薪資提升建議" },
+           "jobMatches": [ { "title": "職位名稱", "match": 0-100契合度, "desc": "說明" } ],
+           "actionItems": [ { "text": "具體行動", "done": false, "tag": "標籤" } ]
+         }
+       }
+     }
+   - 提問表單 (當你需要使用者補充具體資訊才能寫出好的履歷或故事時，例如詢問他們的具體職責、人數、專案成果等)：
+      {
+        "type": "QuestionForm",
+        "props": {
+          "title": "需要補充更多細節",
+          "fields": [
+            { "id": "q1", "label": "請問您在這個專案中具體負責什麼？", "type": "textarea", "placeholder": "您的回答..." }
+          ]
+        }
+      }
+注意：如果你認為使用者目前的輸入適合進行「職涯分析」或「薪水評估」，請務必產生 "CareerDashboard" UI。如果你覺得使用者的經歷太簡短，你需要追問更多細節才能寫出好的 STAR 履歷，請務必使用 "QuestionForm" UI 產生一個表單讓使用者填寫，不要只用純文字反問。JSON 根層級中必須包含 "ui" 屬性。
+${languageInstruction}，格式清晰。` },
+        ...newMessages.map(m => ({ role: m.role, content: m.content }))
       ];
       
       const response = await callDeepSeekAPI(apiMessages, true);
       
       try {
         const parsedResponse = JSON.parse(response);
-        setMessages([...newMessages, { role: 'assistant', content: parsedResponse.reply }]);
+        setMessages([...newMessages, { 
+          role: 'assistant', 
+          content: parsedResponse.reply,
+          ui: parsedResponse.ui
+        }]);
         
         if (parsedResponse.skills && Array.isArray(parsedResponse.skills)) {
           addSkills(parsedResponse.skills);
@@ -79,9 +123,21 @@ export default function ExperienceExtractor() {
     <div className="flex h-full bg-white">
       {/* Left Panel: Chat Interface */}
       <div className="w-2/3 border-r border-slate-200 flex flex-col">
-        <div className="p-6 border-b border-slate-200">
-          <h2 className="text-2xl font-bold text-slate-800">{t('extractor.title')}</h2>
-          <p className="text-slate-500 mt-1">{t('extractor.subtitle')}</p>
+        <div className="p-6 border-b border-slate-200 flex justify-between items-start">
+          <div>
+            <h2 className="text-2xl font-bold text-slate-800">{t('extractor.title')}</h2>
+            <p className="text-slate-500 mt-1">{t('extractor.subtitle')}</p>
+          </div>
+          <button 
+            onClick={() => {
+              clearChat();
+              setMessages([{ role: 'assistant', content: t('extractor.welcome') }]);
+            }}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg font-medium transition-colors text-sm"
+          >
+            <PlusCircle size={16} />
+            {t('extractor.new_chat') || 'New Chat'}
+          </button>
         </div>
         
         <div className="flex-1 p-6 overflow-y-auto bg-slate-50">
@@ -93,7 +149,7 @@ export default function ExperienceExtractor() {
                     {msg.content}
                   </div>
                 ) : (
-                  <div className="bg-white border border-slate-200 text-slate-800 p-4 rounded-2xl rounded-tl-sm max-w-[80%] shadow-sm">
+                  <div className="bg-white border border-slate-200 text-slate-800 p-4 rounded-2xl rounded-tl-sm max-w-[90%] w-[500px] shadow-sm">
                     <div className="flex items-center gap-2 mb-2 text-blue-600 font-semibold">
                       <Sparkles size={18} />
                       <span>{t('extractor.ai_translation')}</span>
@@ -101,6 +157,21 @@ export default function ExperienceExtractor() {
                     <div className="whitespace-pre-wrap text-slate-600 leading-relaxed">
                       {msg.content}
                     </div>
+                    {/* 這裡渲染 Generative UI 元件 */}
+                    {msg.ui && (
+                      <div className="mt-4">
+                        <DynamicComponentRenderer 
+                          ui={msg.ui} 
+                          onQuestionSubmit={(answers) => {
+                            // Convert answers to a readable text string and send to AI
+                            const answerText = Object.entries(answers)
+                              .map(([id, val]) => `${val}`)
+                              .join('\n');
+                            handleSend(answerText);
+                          }}
+                        />
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

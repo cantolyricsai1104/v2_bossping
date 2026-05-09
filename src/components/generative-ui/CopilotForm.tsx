@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { z } from "zod";
-import { useComponent } from "@copilotkit/react-core";
+import { useComponent } from "@copilotkit/react-core/v2";
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';
@@ -49,8 +49,8 @@ export function QuestionForm({ title, fields }: z.infer<typeof QuestionFormProps
       </div>
       
       <div className="p-4 space-y-4">
-        {fields.map((field) => (
-          <div key={field.id} className="space-y-1.5">
+        {fields?.map((field, index) => (
+          <div key={field.id || index} className="space-y-1.5">
             <label className="text-xs font-medium text-slate-600">{field.label}</label>
             {field.type === 'textarea' ? (
               <Textarea 

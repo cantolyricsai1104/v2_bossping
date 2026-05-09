@@ -1,6 +1,6 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, MessageSquare, FileText, Chrome, LogOut, Globe } from 'lucide-react';
+import { LayoutDashboard, MessageSquare, FileText, Chrome, LogOut, Globe, Sparkles } from 'lucide-react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { Button } from './components/ui/button';
 import { useTranslation } from 'react-i18next';
@@ -10,6 +10,7 @@ import ExperienceExtractor from './pages/ExperienceExtractor';
 import CareerNavigator from './pages/CareerNavigator';
 import ResumeBuilder from './pages/ResumeBuilder';
 import Auth from './pages/Auth';
+import CopilotHackathonPage from './pages/CopilotHackathonPage';
 
 function Sidebar() {
   const location = useLocation();
@@ -54,6 +55,18 @@ function Sidebar() {
             </Link>
           );
         })}
+
+        <Link
+          to="/copilot"
+          className={`flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all duration-200 ${
+            location.pathname.startsWith('/copilot')
+              ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
+              : 'text-indigo-400 hover:bg-slate-800/50 hover:text-indigo-300'
+          }`}
+        >
+          <Sparkles size={20} />
+          <span>CopilotKit Demo</span>
+        </Link>
       </nav>
 
       <div className="mt-auto pt-4 border-t border-slate-800 space-y-2">
@@ -114,6 +127,7 @@ export default function App() {
           <Route path="/extractor" element={<ProtectedRoute><ExperienceExtractor /></ProtectedRoute>} />
           <Route path="/navigator" element={<ProtectedRoute><CareerNavigator /></ProtectedRoute>} />
           <Route path="/resume" element={<ProtectedRoute><ResumeBuilder /></ProtectedRoute>} />
+          <Route path="/copilot" element={<ProtectedRoute><CopilotHackathonPage /></ProtectedRoute>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>

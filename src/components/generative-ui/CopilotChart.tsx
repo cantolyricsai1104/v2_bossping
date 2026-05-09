@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { useComponent } from "@copilotkit/react-core";
+import { useComponent } from "@copilotkit/react-core/v2";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { useTranslation } from "react-i18next";
 

@@ -11,6 +11,7 @@
     "lint": "tsc --noEmit"
   },
   "dependencies": {
+    "@ai-sdk/openai": "^3.0.63",
     "@copilotkit/react-core": "^1.57.1",
     "@copilotkit/react-textarea": "^1.57.1",
     "@copilotkit/react-ui": "^1.57.1",

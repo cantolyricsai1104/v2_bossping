@@ -8,12 +8,17 @@ import cors from 'cors';
 // Monkey patch OpenAIAdapter to use chat completions
 const originalGetLanguageModel = OpenAIAdapter.prototype.getLanguageModel;
 OpenAIAdapter.prototype.getLanguageModel = function() {
-  const ai = createOpenAI({
-    apiKey: this.openai.apiKey,
-    baseURL: this.openai.baseURL,
-    compatibility: 'compatible',
-  });
-  return ai.chat(this.model);
+  try {
+    const ai = createOpenAI({
+      apiKey: this.openai.apiKey,
+      baseURL: this.openai.baseURL,
+      compatibility: 'compatible',
+    });
+    return ai.chat(this.model);
+  } catch(e) {
+    console.error("[CopilotKit] Error in getLanguageModel monkey patch:", e);
+    throw e;
+  }
 };
 
 dotenv.config();
@@ -33,7 +38,7 @@ app.use(copilotRuntimeNodeExpressEndpoint({
   }),
 }));
 
-const PORT = 3001;
+const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`Backend running on http://localhost:${PORT}`);
 });
